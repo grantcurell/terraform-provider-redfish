@@ -8,9 +8,8 @@ import (
 )
 
 // NewConfig function creates the needed gofish structs to query the redfish API
-/*
-
- */
+// See https://github.com/stmcginnis/gofish for details. This function returns a Service struct which can then be
+// used to make any required API calls.
 func NewConfig(provider *schema.ResourceData, resource *schema.ResourceData) (*gofish.Service, error) {
 	//Get redfish connection details from resource block
 	var providerUser, providerPassword string

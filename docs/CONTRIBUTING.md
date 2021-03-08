@@ -48,4 +48,34 @@ How to set up a debugger is described [on Terraform's website](https://www.terra
 
 
 8. This means the debugger is up and running. Set your breakpoints as you please and then open a separate terminal window for debugging. In that terminal window you need to create an environment variable using the `TF_REATTACH_PROVIDERS` from above. Create it like this on Windows: `set TF_REATTACH_PROVIDERS='{"registry.terraform.io/dell/redfish":{"Protocol":"grpc","Pid":32044,"Test":true,"Addr":{"Network":"tcp","String":"127.0.0.1:51865"}}}'`
-9. Run your Terraform commands as usual.
+9. If you have breakpoints applied, you can use something like `terraform init && terraform apply --auto-approve` to 
+   test the config is running as expected.
+10. Run your Terraform commands as usual.
+11. You may also find it helpful in your command prompt (the one from which you are running the Terraform binary) to 
+    run `set "TF_LOG=DEBUG"`
+
+**Note**: Terraform communicates with providers via RPC. By using this method what you are doing under the hood is 
+doing the job of running the provider plugin for Terraform. It is therefore not necessary to keep the binary in the 
+usual provider folder (%appdata%\.terraform.d or ~/.terraform.d) because you are running it manually. Terraform will 
+then connect to your provider and use it instead of trying to load it implicitly.
+
+If you see this error:
+
+      Plugin reinitialization required. Please run "terraform init".
+      
+      Plugins are external binaries that Terraform uses to access and manipulate
+      resources. The configuration provided requires plugins which can't be located,
+      don't satisfy the version constraints, or are otherwise incompatible.
+      
+      Terraform automatically discovers provider requirements from your
+      configuration, including providers used in child modules. To see the
+      requirements and constraints, run "terraform providers".
+      
+      Failed to instantiate provider "registry.terraform.io/dell/redfish" to obtain
+      schema: Unrecognized remote plugin message: Provider started, to attach
+      Terraform set the TF_REATTACH_PROVIDERS env var:
+      
+      This usually means that the plugin is either invalid or simply
+      needs to be recompiled to support the latest protocol.
+
+it means you forgot to set the command line environment from step 8.

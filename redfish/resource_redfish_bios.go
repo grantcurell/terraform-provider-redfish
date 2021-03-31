@@ -37,26 +37,26 @@ func getResourceRedfishBiosSchema() map[string]*schema.Schema {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					"user": {
-                                                Type: schema.TypeString,
-                                                Optional: true,
-                                                Description: "User name for login",
-                                        },
+							Type: schema.TypeString,
+							Optional: true,
+							Description: "User name for login",
+					},
 					"password": {
-                                                Type: schema.TypeString,
-                                                Optional: true,
-                                                Description: "User password for login",
-                                                Sensitive: true,
-                                        },
-                                        "endpoint": {
-                                                Type: schema.TypeString,
-                                                Required: true,
-                                                Description: "Server BMC IP address or hostname",
-                                        },
+							Type: schema.TypeString,
+							Optional: true,
+							Description: "User password for login",
+							Sensitive: true,
+					},
+					"endpoint": {
+							Type: schema.TypeString,
+							Required: true,
+							Description: "Server BMC IP address or hostname",
+					},
 					"ssl_insecure": {
-                                                Type: schema.TypeBool,
-                                                Optional: true,
-                                                Description: "This field indicates whether the SSL/TLS certificate must be verified or not",
-                                        },
+							Type: schema.TypeBool,
+							Optional: true,
+							Description: "This field indicates whether the SSL/TLS certificate must be verified or not",
+					},
 				},
 			},
 		},
@@ -340,20 +340,6 @@ func getBiosResource(service *gofish.Service) (*redfish.Bios, error) {
         }
 
         return bios, nil
-}
-
-func getSystemResource(service *gofish.Service) (*redfish.ComputerSystem, error) {
-
-	systems, err := service.Systems()
-
-	if err != nil {
-		return nil, err
-	}
-	if len(systems) == 0 {
-		return nil, errors.New("No computer systems found")
-	}
-
-	return systems[0], err
 }
 
 func getBiosAttrsToPatch(d *schema.ResourceData, attributes map[string]string) (map[string]interface{}, error) {

@@ -7,10 +7,4 @@ rack1 = {
     endpoint = "https://192.168.1.63"
     ssl_insecure = true
   },
-  "some_host" = {
-    user = "root"
-    password = "password"
-    endpoint = "https://192.168.1.65"
-    ssl_insecure = true
-  },
 }

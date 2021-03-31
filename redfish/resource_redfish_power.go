@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/stmcginnis/gofish/redfish"
 	"log"
 )
 
@@ -15,8 +14,38 @@ func resourceRedFishPower() *schema.Resource {
 		UpdateContext: resourceRedfishPowerUpdate,
 		DeleteContext: resourceRedfishPowerDelete,
 		Schema:        getResourceRedfishPowerSchema(),
+		CustomizeDiff: CheckPowerDiff(),
 	}
 }
+
+
+// Custom function for calculating power state. Given some desired_power_action, we know what the expected power
+// state should be after the action is applied. Instead of marking the value of power_state as unknown during
+// PlanResourceChange, we can calculate exactly what the end power_state should be.
+func CheckPowerDiff(funcs ...schema.CustomizeDiffFunc) schema.CustomizeDiffFunc {
+	return func(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+
+		resetType, ok := d.GetOk("desired_power_action")
+
+		if !ok || resetType == nil {
+			log.Printf("[ERROR]: There was a problem getting the desired_power_action")
+			return nil
+		}
+
+		if resetType == "ForceOff" || resetType == "GracefulShutdown" {
+			d.SetNew("power_state", "Off")
+		} else if resetType == "ForceOn" || resetType == "On" {
+			d.SetNew("power_state", "On")
+		} else if resetType == "ForceRestart" || resetType == "PowerCycle" {
+			d.SetNew("power_state", "Reset_On")
+		}
+		// Note - if they select PushPowerButton then this function does nothing because we don't know what the value
+		// will be. We just let Terraform set everything to unknown as per normal
+
+		return nil
+	}
+}
+
 
 func getResourceRedfishPowerSchema() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
@@ -50,9 +79,26 @@ func getResourceRedfishPowerSchema() map[string]*schema.Schema {
 				},
 			},
 		},
-		"desired_power_state": {
+		"desired_power_action": {
 			Type: schema.TypeString,
 			Required: true,
+			Description: "Desired power setting. Applicable values 'On','ForceOn','ForceOff','ForceRestart'," +
+				"'GracefulRestart','GracefulShutdown','PowerCycle'",
+		},
+		"maximum_wait_time": {
+			Type: schema.TypeInt,
+			Required: true,
+			Description: "The maximum amount of time to wait for the server to enter the correct power state before" +
+				         "giving up in seconds",
+		},
+		"check_interval": {
+			Type: schema.TypeInt,
+			Required: true,
+			Description: "The frequency with which to check the server's power state in seconds",
+		},
+		"power_state": {
+			Type: schema.TypeString,
+			Computed: true,
 			Description: "Desired power setting. Applicable values 'On','ForceOn','ForceOff','ForceRestart'," +
 				"'GracefulRestart','GracefulShutdown','PushPowerButton','PowerCycle','Nmi'.",
 		},
@@ -69,7 +115,6 @@ func resourceRedfishPowerRead(ctx context.Context, d *schema.ResourceData, m int
 		return diag.Errorf(err.Error())
 	}
 
-	// TODO getSystemResource should probably be in some sort of common file. See https://github.com/dell/terraform-provider-redfish/issues/21
 	system, err := getSystemResource(service)
 	if err != nil {
 		log.Printf("[ERROR]: Failed to identify system: %s", err)
@@ -80,18 +125,29 @@ func resourceRedfishPowerRead(ctx context.Context, d *schema.ResourceData, m int
 		return diag.Errorf("[ERROR]: Could not retrieve system power state. %s", err)
 	}
 
+	resetType, ok := d.GetOk("desired_power_action")
+
+	if !ok || resetType == nil {
+		log.Printf("[ERROR]: ")
+		return diags
+	}
+
+	if err := d.Set("desired_power_action", resetType); err != nil {
+		return diag.Errorf("[ERROR]: Could not retrieve system power state. %s", err)
+	}
+
 	return diags
 }
 
-// TODO - maybe we should centralize power management?
 func resourceRedfishPowerUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 
-	resetType, ok := d.GetOk("desired_power_state")
+	resetType, ok := d.GetOk("desired_power_action")
 
 	if !ok || resetType == nil {
-		log.Printf("[ERROR]: TODO")
+		log.Printf("[ERROR]: There was a problem getting the desired_power_action")
+		return diags
 	}
 
 	// Takes the m interface and feeds it the user input data d. You can then reference it with X.GetOk("user")
@@ -101,20 +157,22 @@ func resourceRedfishPowerUpdate(ctx context.Context, d *schema.ResourceData, m i
 		return diag.Errorf(err.Error())
 	}
 
-	// TODO getSystemResource should probably be in some sort of common file. See https://github.com/dell/terraform-provider-redfish/issues/21
 	system, err := getSystemResource(service)
 	if err != nil {
 		log.Printf("[ERROR]: Failed to identify system: %s", err)
 		return diag.Errorf(err.Error())
 	}
 
-	log.Printf("[TRACE]: Performing system.Reset(%s)", resetType)
-	if err = system.Reset(redfish.ResetType((resetType).(string))); err != nil {
-		log.Printf("[WARN]: system.Reset returned an error: %s", err)
-		return diag.Errorf(err.Error())
+	d.SetId(system.SerialNumber + "_power")
+
+	powerState, diags := PowerOperation(resetType.(string), d.Get("maximum_wait_time").(int), d.Get("check_interval").(int), service)
+
+	if (resetType == "ForceRestart" || resetType == "GracefulRestart" || resetType == "PowerCycle") && powerState == "On" {
+		powerState = "Reset_On"
 	}
 
-	log.Printf("[TRACE]: system.Reset successful")
+	d.Set("power_state", powerState)
+
 	return diags
 }
 

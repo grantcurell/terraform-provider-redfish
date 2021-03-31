@@ -30,15 +30,18 @@ resource "redfish_power" "system_power" {
   | ForceOff         | Turn off the unit immediately (non-graceful shutdown).                                  |
   | ForceOn          | Turn on the unit immediately.                                                           |
   | ForceRestart     | Shut down immediately and non-gracefully and restart the system.                        |
-  | GracefulRestart  | Shut down gracefully and restart the system.                                            |
   | GracefulShutdown | Shut down gracefully and power off.                                                     |
-  | Nmi              | Generate a diagnostic interrupt, which is usually an NMI on x86 systems, to stop normal |
-  |                  | operations, complete diagnostic actions, and, typically, halt the system.               |
   | On               | Turn on the unit.                                                                       |
   | PowerCycle       | Power cycle the unit.                                                                   |
-  | PushPowerButton  | Simulate the pressing of the physical power button on this unit.                        |
   */
-  desired_power_state = "On"
+  desired_power_action = "ForceRestart"
+
+  // The maximum amount of time to wait for the server to enter the correct power state before
+  // giving up in seconds
+  maximum_wait_time = 120
+
+  // The frequency with which to check the server's power state in seconds
+  check_interval = 10
 }
 
 output "current_power_state" {

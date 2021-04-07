@@ -33,11 +33,7 @@ resource "redfish_bios" "bios" {
     ssl_insecure = each.value.ssl_insecure
   }
 
-  attributes = data.redfish_bios.bios[each.value]
-
-  user_attributes = {
-    "SysProfile" = "PerfOptimized"
-  }
+  attributes = data.redfish_bios.bios[each.key].attributes
 
   settings_apply_time = "OnReset"
   action_after_apply = "ForceRestart"

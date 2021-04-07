@@ -159,3 +159,7 @@ func PowerOperation(resetType string, maximumWaitTime int, checkInterval int, se
 	return system.PowerState, diags
 
 }
+
+func WaitForJob() {
+
+}

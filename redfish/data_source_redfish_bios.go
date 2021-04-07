@@ -2,7 +2,6 @@ package redfish
 
 import (
 	"context"
-	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stmcginnis/gofish"
@@ -69,6 +68,7 @@ func getDataSourceRedfishBiosSchema() map[string]*schema.Schema {
 	}
 }
 
+// TODO why not roll this all into one function?
 func dataSourceRedfishBiosRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	service, err := NewConfig(m.(*schema.ResourceData), d)
 	if err != nil {
@@ -77,13 +77,16 @@ func dataSourceRedfishBiosRead(ctx context.Context, d *schema.ResourceData, m in
 	return readRedfishBios(service, d)
 }
 
+// readRedfishBios Because there are several hundred BIOS settings that aren't yet part of the state we need a way to
+// bring them into the configuration beforehand. This function reaches out to the servers and pulls their BIOS settings
+// and puts them into a value in the config called attributes. These attributes are later combined with any user input.
+// The user input will override any values pre-existing.
 func readRedfishBios(service *gofish.Service, d *schema.ResourceData) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	systems, err := service.Systems()
 	if err != nil {
 		return diag.Errorf("error fetching computer systems collection: %s", err)
-
 	}
 
 	bios, err := systems[0].Bios()
@@ -94,18 +97,14 @@ func readRedfishBios(service *gofish.Service, d *schema.ResourceData) diag.Diagn
 	// TODO: BIOS Attributes' values might be any of several types.
 	// terraform-sdk currently does not support a map with different
 	// value types. So we will convert int and float values to string
-	attributes := make(map[string]string)
+	attributes := make(map[string]interface{})
 
 	// copy from the BIOS attributes to the new bios attributes map
 	for key, value := range bios.Attributes {
-		if attr_val, ok := value.(string); ok {
-			attributes[key] = attr_val
-		} else {
-			attributes[key] = fmt.Sprintf("%v", value)
-		}
+		attributes[key] = value
 	}
 
-	if err := d.Set("odata_id", bios.ODataID); err != nil {
+	if err := d.Set("odata_id", bios.ODataID); err != nil { // TODO - what is this value?
 		return diag.Errorf("error setting bios OData ID: %s", err)
 	}
 

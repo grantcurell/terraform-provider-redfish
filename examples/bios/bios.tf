@@ -11,6 +11,18 @@ provider "redfish" {
     //password = "passw0rd"
 }
 
+data "redfish_bios" "bios" {
+  for_each = var.rack1
+
+  redfish_server {
+    user = each.value.user
+    password = each.value.password
+    endpoint = each.value.endpoint
+    ssl_insecure = each.value.ssl_insecure
+  }
+
+}
+
 resource "redfish_bios" "bios" {
   for_each = var.rack1
 
@@ -21,24 +33,18 @@ resource "redfish_bios" "bios" {
     ssl_insecure = each.value.ssl_insecure
   }
 
-  attributes = {
-    "NumLock" = "On"
+  attributes = data.redfish_bios.bios[each.value]
+
+  user_attributes = {
+    "SysProfile" = "PerfOptimized"
   }
+
   settings_apply_time = "OnReset"
-  //action_after_apply = "ForceRestart"
-}
-
-data "redfish_bios" "bios" {
-  for_each = var.rack1
-
-  redfish_server {
-    user = each.value.user
-    password = each.value.password
-    endpoint = each.value.endpoint
-    ssl_insecure = each.value.ssl_insecure
-  }
+  action_after_apply = "ForceRestart"
+  //wait_to_finish = true
 }
 
 output "bios_attributes" {
   value = data.redfish_bios.bios
 }
+

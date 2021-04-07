@@ -16,7 +16,7 @@ func main() {
 
 	// Set this flag to true if you want the provider to run in debug mode. Leaving it as is will cause it to run
 	// normally.
-	flag.BoolVar(&debugMode, "debug", false, "set to true to run the provider with support for debuggers like delve")
+	flag.BoolVar(&debugMode, "debug", true, "set to true to run the provider with support for debuggers like delve")
 	flag.Parse()
 
 	opts := &plugin.ServeOpts{ProviderFunc: redfish.Provider}

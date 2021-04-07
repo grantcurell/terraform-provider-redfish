@@ -1,0 +1,4 @@
+- Removed functions less than 10 lines whose only purpose was to call another function which was also only called once.
+- Removed error handling for copyBios since it can only ever return nil
+- Updated the map to not convert everything to a string and instead use the interface type. See https://stackoverflow.com/a/18526240/4427375
+- TODO: We should probably use sensitive values https://learn.hashicorp.com/tutorials/terraform/sensitive-variables
